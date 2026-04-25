@@ -1,9 +1,5 @@
 # Airport Link Prediction using Graph Neural Networks ✈️
 
-## Kerollos Lowandy
-
-**Repository:** [airport-link-prediction-gnn](https://github.com/Kerollosl/airport-link-prediction-gnn)
-
 ## 📋 Overview
 
 This project implements Graph Neural Networks (GNN) and Classic Neural Networks to predict potential new airline routes between airports based on existing flight network data. The model analyzes airport connectivity patterns, geographical locations, and network features to identify high-probability future connections.
@@ -164,16 +160,3 @@ pred = MLPPredictor(16)
 - Network resilience analysis
 - Hub identification for new airlines
 
-## 👤 Author
-
-**Kerollos Lowandy**
-- GitHub: [@Kerollosl](https://github.com/Kerollosl)
-- Email: klowandy@gmail.com
-
-## 📄 License
-
-This project is available for educational and research purposes.
-
----
-
-**Last Updated:** March 27, 2026
