@@ -118,7 +118,7 @@ def node2vec_embeddings(G, dimensions=128):
   # Embed nodes
   model = node2vec.fit(window=10, min_count=1)
   # Access the embeddings for nodes
-  node_embeddings = [model.wv[node-1] for node in node_index]
+  node_embeddings = [model.wv[str(node)] for node in node_index]
   return node_embeddings
 
 def random_embeddings(G, dimensions=128):
@@ -141,10 +141,12 @@ def make_double_tensor(embedding_list_1, embedding_list_2):
     return combined_tensor
 
 def edge_tensor(given_edges, num_features, double_tensor):
+  from graph_utils import node_rows
+  rows = node_rows(double_tensor.node_ids)
   temp_tensor = torch.empty((len(given_edges),num_features))
   #print(len(given_edges))
   for i, (u, v) in enumerate(given_edges):
-      temp_tensor[i] = double_tensor[u-1] - double_tensor[v-1]
+      temp_tensor[i] = torch.abs(double_tensor[rows[u]] - double_tensor[rows[v]])
   return temp_tensor
 
 def train_model(model_choice, train_features, train_labels, test_features, test_labels):
@@ -182,7 +184,7 @@ def link_prediction(nodes_df, departing_from, arriving_at, nn_model, actual, num
   with torch.no_grad():
       nn_model.eval()
       pred = torch.sigmoid(nn_model(test_tensor))
-  return departing_from, airport_one[0], f"{airport_one[1]}, {airport_one[2]}", arriving_at, airport_two[0], f"{airport_two[1]}, {airport_two[2]}", actual, round(pred.item(), 1)
+  return departing_from, airport_one[0], f"{airport_one[1]}, {airport_one[2]}", arriving_at, airport_two[0], f"{airport_two[1]}, {airport_two[2]}", actual, pred.item()
 
 def plot_cm(predicted, actual, model_name):
     fig, ax = plt.subplots(figsize=(12, 6))
@@ -192,3 +194,4 @@ def plot_cm(predicted, actual, model_name):
     ax.set_yticklabels(['Actual 0', 'Actual 1'])
     plt.title(model_name)
     plt.show()
+

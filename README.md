@@ -160,3 +160,8 @@ pred = MLPPredictor(16)
 - Network resilience analysis
 - Hub identification for new airlines
 
+
+
+## Cleanup behavior and validation limits
+
+Canonical execution is the Python script; notebooks preserve historical experiments. Node IDs are mapped explicitly, undirected edge features use absolute differences, and positive edges are split before training embeddings to prevent holdout leakage. Validation and test edges are separate. Published performance must be regenerated with the recorded environment; full graph training was not run during cleanup.

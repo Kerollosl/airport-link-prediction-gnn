@@ -1,0 +1,15 @@
+{
+  "version": 1,
+  "source_commit": "0f29c0ed8d70c0ebf3dc4952bac8f5254e981b78",
+  "artifacts": [
+    {
+      "path": "link_prediction_model.pth",
+      "mode": "100644",
+      "type": "blob",
+      "sha": "2a35812a972a30d9464f0755186993e532328e14",
+      "size": 45396,
+      "url": "https://api.github.com/repos/Kerollosl/airport-link-prediction-gnn/git/blobs/2a35812a972a30d9464f0755186993e532328e14"
+    }
+  ],
+  "status": "Historical artifacts retained. Training/evaluation and redistribution rights are not independently verified."
+}

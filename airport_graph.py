@@ -1,4 +1,7 @@
 from functions import *
+from graph_utils import binary_labels
+import random
+random.seed(42); np.random.seed(42); torch.manual_seed(42)
 import pandas as pd
 import networkx as nx
 import matplotlib.pyplot as plt
@@ -139,7 +142,16 @@ for neighbor in G.edges(choice):
 
 """#Node2Vec Embeddings and Embeddings as a Tensor"""
 
-node_embeddings = node2vec_embeddings(G)
+pos_edges = list(G.edges())
+np.random.shuffle(pos_edges)
+test_size = max(1, int(len(pos_edges) * 0.1))
+val_size = test_size
+train_pos_edges = pos_edges[:-(test_size + val_size)]
+val_pos_edges = pos_edges[-(test_size + val_size):-test_size]
+test_pos_edges = pos_edges[-test_size:]
+train_graph = G.copy()
+train_graph.remove_edges_from_edges(val_pos_edges + test_pos_edges)
+node_embeddings = node2vec_embeddings(train_graph)
 #node_embeddings = random_embeddings(G)
 
 
@@ -148,20 +160,14 @@ node_embeddings = node2vec_embeddings(G)
 node2vec_tensor = make_tensor(node_embeddings)
 location_tensor = make_tensor(list(nodes_df['location']))
 double_tensor = make_double_tensor(node2vec_tensor, location_tensor)
+double_tensor.node_ids = list(G.nodes())
 print(f"Features shape: {double_tensor.shape}")
 
 ##########################################Getting Positive and Negative Edges###########################################
 
 # Positive edges
 dgl_graph = dgl.from_networkx(G)
-pos_edges = list(G.edges())
-np.random.shuffle(pos_edges)
-
-# Split positive edges for training and testing
-test_size = int(len(pos_edges) * 0.1)
-train_size = int(len(pos_edges) * 0.9)
-
-train_pos_edges, test_pos_edges = pos_edges[:train_size], pos_edges[-test_size:]
+train_size = len(train_pos_edges)
 
 # Negative edges
 neg_edges = list(nx.non_edges(G))
@@ -172,7 +178,6 @@ np.random.shuffle(neg_edges)
 train_neg_edges, test_neg_edges = neg_edges[:int(train_size*0.75)], neg_edges[int(-test_size*0.75):]
 
 all_pos_neg_edges = train_pos_edges + train_neg_edges + test_pos_edges + test_neg_edges
-all_pos_neg_graph = dgl.graph(all_pos_neg_edges)
 
 ####################################################Edge Embeddings###################################################
 
@@ -243,8 +248,8 @@ class GraphSAGENet(nn.Module):
     def __init__(self, in_feats, hidden_feats, num_layers):
         super(GraphSAGENet, self).__init__()
         self.layers = nn.ModuleList([
-            dglnn.SAGEConv(in_feats, hidden_feats, 'mean')
-            for _ in range(num_layers)
+            dglnn.SAGEConv(in_feats if i == 0 else hidden_feats, hidden_feats, 'mean')
+            for i in range(num_layers)
         ])
         self.dropout = nn.Dropout(0.35)
         self.prediction = nn.Linear(hidden_feats, 1)
@@ -268,7 +273,12 @@ num_layers = 3
 ##########################################Train Model(s)##########################################
 
 
-train_model(standard_link_pred, train_features, train_labels, test_features, test_labels)
+# Validation edges have separate negatives and are not the final test set.
+used_neg = set(train_neg_edges + test_neg_edges)
+val_neg_edges = [e for e in neg_edges if e not in used_neg][:len(val_pos_edges)]
+validation_features = edge_tensor(val_pos_edges + val_neg_edges, num_features, double_tensor)
+validation_labels = torch.tensor([1.] * len(val_pos_edges) + [0.] * len(val_neg_edges))
+train_model(standard_link_pred, train_features, train_labels, validation_features, validation_labels)
 # train_model(GS_model)
 
 
@@ -286,10 +296,10 @@ predictions_df = predictions_df.sort_values(by=['Average_Degree','Prediction'], 
 false_preds = predictions_df[predictions_df['Actual'] != predictions_df['Prediction']]
 false_preds.to_csv("./pred_vs_actual.csv")
 
-plot_cm(predictions_df['Prediction'].astype(int), predictions_df['Actual'], "Confusion Matrix")
+plot_cm(binary_labels(predictions_df['Prediction']), predictions_df['Actual'], "Confusion Matrix")
 
-precision, recall, fscore, support = precision_recall_fscore_support(predictions_df['Actual'], predictions_df['Prediction'].astype(int), average='macro', zero_division=1)
-accuracy = accuracy_score(predictions_df['Actual'], predictions_df['Prediction'].astype(int))
+precision, recall, fscore, support = precision_recall_fscore_support(predictions_df['Actual'], binary_labels(predictions_df['Prediction']), average='macro', zero_division=1)
+accuracy = accuracy_score(predictions_df['Actual'], binary_labels(predictions_df['Prediction']))
 print(f"Accuracy: {accuracy*100 :.2f}%\nPrecision: {precision*100 :.2f}%\nRecall: {recall*100 :.2f}%\nfscore: {fscore*100 :.2f}%")
 
 potential_new_connections = predictions_df[(predictions_df['Actual'] == 0) & (predictions_df['Prediction'] >= 0.8)]
@@ -311,3 +321,4 @@ plt.axis('off')
 plt.tight_layout();
 plt.title("Airport Graph with Potential new Connections")
 plt.show()
+
