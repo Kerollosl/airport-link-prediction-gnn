@@ -13,7 +13,7 @@ import torch.nn.functional as F
 import dgl
 import dgl.nn as dglnn
 
-from sklearn.metrics import precision_recall_fscore_support, accuracy_score
+from sklearn.metrics import precision_recall_fscore_support, accuracy_score, roc_auc_score, average_precision_score
 
 ##########################################Create Graph from DataFrames##########################################
 
@@ -293,12 +293,12 @@ predictions_df = pd.DataFrame(results, columns=columns)
 predictions_df["Average_Degree"] = predictions_df.apply(lambda row: np.mean([G.degree(row['source']), G.degree(row['dest'])]), axis=1)
 predictions_df = predictions_df.sort_values(by=['Average_Degree','Prediction'], ascending=False)
 
-false_preds = predictions_df[predictions_df['Actual'] != predictions_df['Prediction']]
+false_preds = predictions_df[predictions_df['Actual'] != binary_labels(predictions_df['Prediction'])]
 false_preds.to_csv("./pred_vs_actual.csv")
 
 plot_cm(binary_labels(predictions_df['Prediction']), predictions_df['Actual'], "Confusion Matrix")
 
-precision, recall, fscore, support = precision_recall_fscore_support(predictions_df['Actual'], binary_labels(predictions_df['Prediction']), average='macro', zero_division=1)
+precision, recall, fscore, support = precision_recall_fscore_support(predictions_df['Actual'], binary_labels(predictions_df['Prediction']), average='macro', zero_division=0)
 accuracy = accuracy_score(predictions_df['Actual'], binary_labels(predictions_df['Prediction']))
 print(f"Accuracy: {accuracy*100 :.2f}%\nPrecision: {precision*100 :.2f}%\nRecall: {recall*100 :.2f}%\nfscore: {fscore*100 :.2f}%")
 
@@ -322,3 +322,11 @@ plt.tight_layout();
 plt.title("Airport Graph with Potential new Connections")
 plt.show()
 
+
+# Raw-score ranking metrics complement the thresholded classification report.
+print("ROC-AUC:", roc_auc_score(predictions_df['Actual'], predictions_df['Prediction']))
+print("PR-AUC (average precision):", average_precision_score(predictions_df['Actual'], predictions_df['Prediction']))
+torch.save({"state_dict": standard_link_pred.state_dict(), "node_ids": list(G.nodes()),
+            "node_features": double_tensor, "seed": 42,
+            "validation_edges": val_pos_edges, "test_edges": test_pos_edges},
+           "link_prediction_artifacts.pt")
